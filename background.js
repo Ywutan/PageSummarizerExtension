@@ -200,14 +200,17 @@ chrome.runtime.onMessage.addListener((msg,_,sendResponse)=>{
     (async()=>{
       const { provider } = await getSettings();
 
-      if(provider==="anthropic")
-      {return summarizeWithAnthropic(msg.payload);}
+      switch (provider) {
+        case "anthropic":
+          return summarizeWithAnthropic(msg.payload);
 
-      if (provider === "deepseek")
-      {return summarizeWithDeepSeek(msg.payload);}
+        case "deepseek":
+          return summarizeWithDeepSeek(msg.payload);
 
-      return summarizeWithOpenAI(msg.payload);
-
+        case "openai":
+        default:
+          return summarizeWithOpenAI(msg.payload);
+      }
     })()
       .then(sendResponse)
       .catch(e=>sendResponse({ ok:false,error:String(e) }));
