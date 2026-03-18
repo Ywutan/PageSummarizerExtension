@@ -30,12 +30,7 @@ function truncateForModel(text, maxChars) {
   return s.slice(0, maxChars);
 }
 
-async function summarizeWithDeepSeek({ title, url, text, language }) {
-  const { apiKey } = await getSettings();
-
-  if (!apiKey)
-  {return { ok: false, error: "Missing DeepSeek API key." };}
-
+function promptWithLanguage({ language, title, text, url }) {
   const lang = languageInstruction(language);
 
   const prompt = [
@@ -52,6 +47,15 @@ async function summarizeWithDeepSeek({ title, url, text, language }) {
     truncateForModel(text, 12000)
   ].join("\n");
 
+  return prompt;
+}
+
+async function summarizeWithDeepSeek({ title, url, text, language }) {
+  const { apiKey } = await getSettings();
+  if (!apiKey) {
+    return { ok: false, error: "Missing DeepSeek API key." };
+  }
+
   const resp = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: {
@@ -61,7 +65,7 @@ async function summarizeWithDeepSeek({ title, url, text, language }) {
     body: JSON.stringify({
       model: "deepseek-chat",
       messages: [
-        { role: "user", content: prompt }
+        { role: "user", content: promptWithLanguage({ language, title, text, url }) }
       ],
       stream: false,
       max_tokens: 600
@@ -81,28 +85,11 @@ async function summarizeWithDeepSeek({ title, url, text, language }) {
 
 async function summarizeWithOpenAI({ title, url, text, language }) {
   const { apiKey } = await getSettings();
-
-  if (!apiKey)
-  {return { ok: false, error: "Missing OpenAI API key." };}
-
-  const lang = languageInstruction(language);
-
-  const prompt = [
-    `Summarize the following web page in ${lang}.`,
-    "Return:",
-    "- 5 bullet key points",
-    "- 1 short paragraph summary",
-    "- 3 action items (if applicable)",
-    "",
-    `Title: ${title}`,
-    `URL: ${url}`,
-    "",
-    "Content:",
-    truncateForModel(text, 12000)
-  ].join("\n");
+  if (!apiKey) {
+    return { ok: false, error: "Missing OpenAI API key." };
+  }
 
   const resp = await fetch("https://api.openai.com/v1/responses", {
-
     method: "POST",
 
     headers: {
@@ -113,10 +100,7 @@ async function summarizeWithOpenAI({ title, url, text, language }) {
     body: JSON.stringify({
       model: "gpt-5.4",
       input: [
-        {
-          role: "user",
-          content: prompt
-        }
+        { role: "user", content: promptWithLanguage({ language, title, text, url }) }
       ],
       max_output_tokens: 600
     })
@@ -140,25 +124,9 @@ async function summarizeWithOpenAI({ title, url, text, language }) {
 
 async function summarizeWithAnthropic({ title, url, text, language }) {
   const { apiKey } = await getSettings();
-
-  if (!apiKey)
-  {return { ok:false, error:"Missing Anthropic API key." };}
-
-  const lang = languageInstruction(language);
-
-  const prompt = [
-    `Summarize the following web page in ${lang}.`,
-    "Return:",
-    "- 5 bullet key points",
-    "- 1 short paragraph summary",
-    "- 3 action items (if applicable)",
-    "",
-    `Title: ${title}`,
-    `URL: ${url}`,
-    "",
-    "Content:",
-    truncateForModel(text,12000)
-  ].join("\n");
+  if (!apiKey) {
+    return { ok:false, error:"Missing Anthropic API key." };
+  }
 
   const resp = await fetch(
     "https://api.anthropic.com/v1/messages",
@@ -174,7 +142,7 @@ async function summarizeWithAnthropic({ title, url, text, language }) {
         model:"claude-3-5-sonnet-latest",
         max_tokens:600,
         messages:[
-          { role:"user", content:prompt }
+          { role: "user", content: promptWithLanguage({ language, title, text, url }) }
         ]
       })
     }
